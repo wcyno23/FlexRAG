@@ -6,10 +6,55 @@
 <a href="https://github.com/"><img alt="License" src="https://img.shields.io/badge/Apache-2.0-green"></a>
 <a><img alt="Static Badge" src="https://img.shields.io/badge/made_with-Python-blue"></a>
 </div>
-
 <h4 align="center">
 
-## Citation
+## 👋 Overview
+
+**FlexRAG** is a lightweight model designed to reduce RAG running costs while improving its generation quality. It compresses the retrieved contexts into compact embeddings and these embedding are optimized to enhance downstream RAG performance. A key feature of FlexRAG is its flexibility, which enables effective support for diverse compression ratios and selective preservation of important contexts. 
+
+## 🛠️ Set up
+
+### Data
+
+The evaluation dataset for FlexRAG is released [here](https://huggingface.co/datasets/wcyno23/FlexRAG-eval). Please download and unzip them to the `data` folder.
+
+### Environment
+
+You can install the necessary dependencies using the following command. Recommended Python version is 3.10+.
+
+```
+pip install -r requirements.txt
+```
+
+## :rocket: Usage
+
+The entire experiment scripts are included at the `experiments` directory. For example, to evaluate on Long-sequence Multi-doc QA dataset:
+
+Vanilla RAG:
+
+```
+cd FlexRAG
+bash experiments/eval/eval_longbench_base.sh
+```
+
+FlexRAG w/o Selective Compression:
+
+```
+bash experiments/eval/eval_longbench_flexrag_wo_sc.sh
+```
+
+FlexRAG w. Selective Compression:
+
+```
+bash experiments/eval/eval_longbench_flexrag_embedding.sh
+```
+
+The script above will first use a embedding model to estimate the importance of each sample and save the results in the `data/sentence_embedding/longbench_comp8/`  directory. It will then use FlexRAG to selectively compress the context based on given importance and improve performance.
+
+The final evaluation results will be stored in the `data/longbench` directory.
+
+
+## ✍️ Citation
 If you find this repository useful, please consider giving a star ⭐ and citation
 ```
 @article{liu2024lighter,
