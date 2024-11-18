@@ -1,8 +1,8 @@
 import os
-import datasets
 import uuid
 import logging
 import random
+import datasets
 from dataclasses import dataclass, field, asdict
 from typing import List
 from transformers import HfArgumentParser, set_seed
@@ -28,7 +28,7 @@ class TaskArgs:
         default="data/open_domain_qa",
     )
     dataset_names: List[str] = field(
-        default=lambda: [],
+        default=lambda: ["nq", "popqa", "trivia"],
     )
     chat_template: str = field(
         default="llama-2",
@@ -57,15 +57,6 @@ class TaskArgs:
     use_encoder_at_ratio_one: bool = field(
         default=False,
     )
-    sentence_dir: str = field(
-        default="",
-    )
-    text_proportion: float = field(
-        default=0.1,
-    ) # the proportion of the importance context in the original context  
-    low_comp_ratio: int = field(
-        default=1,
-    ) # the compression ratio for important context
 
     def __post_init__(self):
         if len(self.dataset_names) == 0:
@@ -80,7 +71,6 @@ def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], tokenizer: 
 
         # * format context
         retrieval_results = data["key"]
-        # print(len(data["key"]))
         context = "\n\n".join([
             f"Doc {i + 1}: {retrieval_results[i]}"
             for i in range(retrieval_num)
@@ -119,16 +109,6 @@ def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], tokenizer: 
     
     return dataset_dict
 
-def load_importance_sentence_indices(data_dir: str, dataset_names: List[str], chat_template: str, text_proportion: float):
-    dataset_dict = {}
-    for dataset_name in dataset_names:
-        data_name = dataset_name + "." + str(text_proportion) + ".json"
-        path = os.path.join(data_dir, chat_template, data_name)
-        dataset = datasets.load_dataset("json", data_files=path, split="train")
-        dataset_dict[dataset_name] = dataset
-    
-    return dataset_dict
-
 def main():
     # * set parser
     parser = HfArgumentParser([ModelArgs, LoraArgs, TaskArgs])
@@ -160,41 +140,47 @@ def main():
             retrieval_num=task_args.retrieval_num,
             seed=task_args.seed,
         )
-        tokenizer.add_tokens([CONTEXT_TAG], special_tokens=True)
-        temp_dict = {}
-
-        # * load llmlingua prepcoessed importance_token_indices_list
-        importance_sentence_dicts = load_importance_sentence_indices(data_dir=task_args.sentence_dir, dataset_names=task_args.dataset_names, chat_template=task_args.chat_template,
-        text_proportion=task_args.text_proportion)
-
-        for dataset_name in dataset_dict.keys():
-            importance_sentence_dict = importance_sentence_dicts[dataset_name]
-
-            temp_dict[dataset_name] = dataset_dict[dataset_name].map(
-                Data.process_flexrag_embedding_sc,
+        origin_column_names = dataset_dict[task_args.dataset_names[0]].column_names + ["index", "length"]
+        # RAG
+        if task_args.comp_ratio ==0:
+            dataset_dict = dataset_dict.map(
+                Data.process_instruction_tuning,
                 fn_kwargs={
                     "tokenizer": tokenizer,
-                    "chat_template": task_args.chat_template,
                     "lm_max_length": model_args.lm_max_length,
-                    "encoder_max_length": model_args.encoder_max_length,
-                    "comp_candidates": [task_args.comp_ratio],
-                    "down_scaling_method": task_args.down_scaling_method,
+                    "chat_template": task_args.chat_template,
                     "eval_mode": True,
-                    "dataset_name": dataset_name, 
-                    "ratio_power_of_two": task_args.ratio_power_of_two,
-                    "use_encoder_at_ratio_one": task_args.use_encoder_at_ratio_one,
-                    "text_proportion": task_args.text_proportion,
-                    "low_comp_ratio": task_args.low_comp_ratio,
-                    "importance_sentence_dict": importance_sentence_dict,
                 },
                 with_indices=True,
                 batched=True,
                 num_proc=32,
             )
-        
-        dataset_dict.update(temp_dict)
+        # FlexRAG
+        else:
+            tokenizer.add_tokens([CONTEXT_TAG], special_tokens=True)
+            temp_dict = {}
+            for dataset_name in dataset_dict.keys():
+                temp_dict[dataset_name] = dataset_dict[dataset_name].map(
+                    Data.process_flexrag_dynamic_instruction_tuning,
+                    fn_kwargs={
+                        "tokenizer": tokenizer,
+                        "chat_template": task_args.chat_template,
+                        "lm_max_length": model_args.lm_max_length,
+                        "encoder_max_length": model_args.encoder_max_length,
+                        "comp_candidates": [task_args.comp_ratio],
+                        "down_scaling_method": task_args.down_scaling_method,
+                        "eval_mode": True,
+                        "dataset_name": dataset_name,
+                        "ratio_power_of_two": task_args.ratio_power_of_two,
+                        "use_encoder_at_ratio_one": task_args.use_encoder_at_ratio_one, 
+                    },
+                    with_indices=True,
+                    batched=True,
+                    num_proc=32,
+                ) 
+            dataset_dict.update(temp_dict)
     
-    # * eval open domain qa
+    # * eval rag
     task_id = str(uuid.uuid4()).replace("-", "")
 
     metrics_dict = {}
@@ -230,6 +216,7 @@ def main():
 
             if accelerator.num_processes > 1:
                 outputs = outputs.contiguous()  # must be contiguous
+                # FIXME: dim cannot be -1
                 outputs = accelerator.pad_across_processes(outputs, pad_index=tokenizer.pad_token_id, dim=1)
                 outputs = accelerator.gather_for_metrics(outputs)
             
