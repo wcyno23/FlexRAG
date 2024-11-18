@@ -49,8 +49,6 @@ FlexRAG w. Selective Compression:
 bash experiments/eval/eval_longbench_flexrag_embedding.sh
 ```
 
-The script above will first use a embedding model to estimate the importance of each sample and save the results in the `data/sentence_embedding/longbench_comp8/`  directory. It will then use FlexRAG to selectively compress the context based on given importance and improve performance.
-
 The final evaluation results will be stored in the `data/longbench` directory.
 
 
