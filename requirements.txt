@@ -1,0 +1,14 @@
+torch==2.2.2
+transformers==4.41.0
+deepspeed>=0.14.0
+numpy==1.26.4
+flash-attn
+peft
+datasets
+accelerate
+blingfire
+sentence-transformers
+rouge
+fuzzywuzzy
+jieba
+llmlingua
