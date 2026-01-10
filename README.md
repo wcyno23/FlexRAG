@@ -57,10 +57,11 @@ The final evaluation results will be stored in the `data/longbench` directory.
 ## ✍️ Citation
 If you find this repository useful, please consider giving a star ⭐ and citation
 ```
-@article{liu2024lighter,
-  title={Lighter And Better: Towards Flexible Context Adaptation For Retrieval Augmented Generation},
-  author={Liu, Zheng and Wu, Chenyuan and Shao, Ninglu and Xiao, Shitao and Li, Chaozhuo and Lian, Defu},
-  journal={arXiv preprint arXiv:2409.15699},
-  year={2024}
+@inproceedings{wu2025lighter,
+  title={Lighter and better: Towards flexible context adaptation for retrieval augmented generation},
+  author={Wu, Chenyuan and Shao, Ninglu and Liu, Zheng and Xiao, Shitao and Li, Chaozhuo and Zhang, Chen and Wang, Senzhang and Lian, Defu},
+  booktitle={Proceedings of the Eighteenth ACM International Conference on Web Search and Data Mining},
+  pages={271--280},
+  year={2025}
 }
 ```
