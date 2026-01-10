@@ -19,6 +19,7 @@ class CompressiveEncoder(nn.Module):
         encoder_max_length: int = 4096,
         comp_candidates: List[int] = [2, 4, 8, 16, 32],
         seed: int = 42,
+        down_scaling_method: str = "stride",
     ):
         super().__init__()
 
@@ -29,10 +30,12 @@ class CompressiveEncoder(nn.Module):
             torch_dtype=torch_dtype,
             device_map=device_map,
             attn_implementation=attn_implementation,
+            # use_safetensors=True,
         )
         self.window = window
         self.encoder_max_length = encoder_max_length
         self.comp_candidates = comp_candidates
+        self.down_scaling_method = down_scaling_method
         self.seed = seed
         self.rng = np.random.default_rng(self.seed)
 
@@ -91,7 +94,7 @@ class CompressiveEncoder(nn.Module):
         comp_segment_sizes.pop()  # The last segment can be deleted directly (no compression needed)
 
         # * prepare compressive encoder segment sizes and indices
-        encode_indices = []
+        encoder_indices = []
         _encoder_indices = []
         encoder_segement_sizes = []
         encoder_segement_size = 0
@@ -105,11 +108,19 @@ class CompressiveEncoder(nn.Module):
                 encoder_segement_size = 0
             if i == segment_num - 1:
                 break
+            
+            if self.down_scaling_method == "stride":
+                _encoder_indices += [
+                    encoder_segement_size + comp_ratios[i] * (j + 1) - 1
+                    for j in range(comp_segment_sizes[i])
+                ]
+            elif self.down_scaling_method == "random":
+                indices = torch.randperm(segment_sizes[i], device=input_ids.device)[:comp_segment_sizes[i]]
+                indices = (indices + encoder_segement_size).tolist()
+                _encoder_indices += indices
+            else:
+                raise ValueError(f"Unknown down_scaling_method: {self.down_scaling_method}")
 
-            _encoder_indices += [
-                encoder_segement_size + comp_ratios[i] * (j + 1) - 1
-                for j in range(comp_segment_sizes[i])
-            ]
             encoder_segement_size += segment_sizes[i]
 
         # * format compressive encoder inputs

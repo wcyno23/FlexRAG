@@ -1,6 +1,6 @@
 import torch
 from llmlingua import PromptCompressor
-from typing import List, Union
+from typing import List
 class MyCompressor(PromptCompressor):
     def __init__(
         self,

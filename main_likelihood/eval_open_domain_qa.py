@@ -1,25 +1,20 @@
 import os
 import datasets
 import uuid
-import random
 import logging
 from dataclasses import dataclass, field, asdict
 from typing import List
+from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
-from transformers.tokenization_utils import PreTrainedTokenizer
 from accelerate import Accelerator
-from src.data import FlexRAGCollator, DefaultDataCollator
+from torch.utils.data import DataLoader
+from src.data import FlexRAGCollator
 from src.open_domain_qa.config import DATASET2PROMPT, DATASET2MAXLEN, DATASET2METRIC
 from src.open_domain_qa.metric import Metric
-from src.chat import apply_chat_template
 from src.model import load_model_and_tokenizer
 from src.args import ModelArgs, LoraArgs
-from torch.utils.data import DataLoader
 from src.utils import save_to_json, move_to_device, FileLogger
-from tqdm import tqdm
 from src.data import Data, INPUT_TAG, CONTEXT_TAG
-from main_likelihood.estimator import Estimator 
-
 
 @dataclass
 class TaskArgs:
@@ -44,7 +39,7 @@ class TaskArgs:
     max_length: int = field(
         default=3500,
     )
-    comp_ratio: int = field(
+    overall_comp_ratio: int = field(
         default=16,
     )
     down_scaling_method: str = field(
@@ -59,12 +54,6 @@ class TaskArgs:
     seed: int = field(
         default=42,
     )
-    ratio_power_of_two: bool = field( 
-        default=True,
-    ) # whether use ratio which is power of two for dynamic compression
-    use_encoder_at_ratio_one: bool = field(
-        default=False,
-    )
     text_proportion: float = field(
         default=0.1,
     ) # the proportion of the importance context in the original context  
@@ -76,7 +65,7 @@ class TaskArgs:
         if len(self.dataset_names) == 0:
             raise ValueError("`dataset_names` can not be empty.")
 
-def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], tokenizer: PreTrainedTokenizer, retrieval_num: int, seed: int):
+def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], retrieval_num: int):
     def _process(data: dict, dataset_name: str, retrieval_num: int):
         # * get prompt and replace query placehoder
         prompt = DATASET2PROMPT[dataset_name]
@@ -109,7 +98,6 @@ def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], tokenizer: 
     for dataset_name in dataset_names:
         path = os.path.join(data_dir, f"{dataset_name}.json")
         dataset = datasets.load_dataset("json", data_files=path, split="train")
-        
         dataset_dict[dataset_name] = dataset.map(
             _process,
             fn_kwargs={
@@ -160,9 +148,7 @@ def main():
         dataset_dict = prepare_open_domain_qa(
             data_dir=task_args.data_dir,
             dataset_names=task_args.dataset_names,
-            tokenizer=tokenizer,
             retrieval_num=task_args.retrieval_num,
-            seed=task_args.seed,
         )
         tokenizer.add_tokens([CONTEXT_TAG], special_tokens=True)
 
@@ -174,19 +160,14 @@ def main():
         for dataset_name in dataset_dict.keys():
             importance_token_indices_list = importance_token_dict[dataset_name]
             temp_dict[dataset_name] = dataset_dict[dataset_name].map(
-                Data.process_flexrag_likelihood_sc,
+                Data.encode_conversations_token_level_sc,
                 fn_kwargs={
                     "tokenizer": tokenizer,
                     "chat_template": task_args.chat_template,
                     "lm_max_length": model_args.lm_max_length,
                     "encoder_max_length": model_args.encoder_max_length,
-                    "comp_candidates": [task_args.comp_ratio],
+                    "overall_comp_ratio": task_args.overall_comp_ratio,
                     "down_scaling_method": task_args.down_scaling_method,
-                    "eval_mode": True,
-                    "dataset_name": dataset_name, 
-                    "ratio_power_of_two": task_args.ratio_power_of_two,
-                    "use_encoder_at_ratio_one": task_args.use_encoder_at_ratio_one,
-                    "text_proportion": task_args.text_proportion,
                     "low_comp_ratio": task_args.low_comp_ratio,
                     "importance_token_indices_list": importance_token_indices_list,
                 },
@@ -203,10 +184,7 @@ def main():
     metrics_dict = {}
     
     for dataset_name in task_args.dataset_names:
-        if task_args.comp_ratio == 0:
-            collator = DefaultDataCollator(tokenizer)
-        else:
-            collator = FlexRAGCollator(tokenizer)
+        collator = FlexRAGCollator(tokenizer)
         dataloader = DataLoader(
             dataset_dict[dataset_name],
             batch_size=task_args.batch_size,

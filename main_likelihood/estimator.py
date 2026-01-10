@@ -2,7 +2,6 @@ from main_likelihood.llmlingua_compressor import MyCompressor
 from typing import List
 from src.utils import str_to_torch_dtype
 
-
 class Estimator:
     def __init__(self, model_name_or_path, device, dtype, attn_implementation):
         self.llm_lingua = MyCompressor(
@@ -26,7 +25,7 @@ class Estimator:
             context = tokenizer.decode(_encoder_input_ids)
             length_deviation = len(tokenizer.encode(context)) - encoder_length
             llm_lingua_output = self.llm_lingua.compress_prompt(context, target_token=text_proportion * encoder_length, use_sentence_level_filter=use_sentence_level_filter)
-            token_ids_list =  llm_lingua_output['token_idx']
+            token_ids_list = llm_lingua_output['token_idx']
 
             filtered_token_ids_list = []
             for idx in token_ids_list:
@@ -36,8 +35,3 @@ class Estimator:
             importance_token_indices.append(filtered_token_ids_list)
 
         return importance_token_indices
-
-
-
-        
-

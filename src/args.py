@@ -17,7 +17,7 @@ class ModelArgs:
     )
     # * compressive encoder
     encoder_name_or_path: str = field(
-        default="meta-llama/Llama-2-7b-chat-hf",
+        default=None,
     )
     encoder_num_hidden_layers: int = field(
         default=8,
@@ -111,6 +111,3 @@ class TrainingArgs(TrainingArguments):
     gradient_checkpointing_kwargs: Optional[dict] = field(
         default_factory=lambda: {"use_reentrant": False}
     )  # If use --gradient_checkpointing, this kwargs have to be set
-    group_by_stride: bool = field(
-        default=False,
-    )  # If run instruction training, set this to True

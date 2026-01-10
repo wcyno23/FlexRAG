@@ -3,10 +3,9 @@ import torch.nn as nn
 from dataclasses import dataclass
 from typing import List, Optional
 from accelerate import Accelerator
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM
 from transformers.modeling_outputs import CausalLMOutput
 from src.model.compressive_encoder import CompressiveEncoder
-from tqdm import tqdm
 
 
 @dataclass
@@ -85,7 +84,6 @@ class LM(nn.Module):
             attention_mask=attention_mask,
             labels=labels,
         )
-
         while not self.compressive_encoder.is_finished:
             (
                 input_ids,

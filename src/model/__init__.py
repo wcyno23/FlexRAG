@@ -16,6 +16,7 @@ def load_model_and_tokenizer(
     lora_args: LoraArgs = None,
     accelerator: Optional[Accelerator] = None,
     return_tokenizer_only: bool = False,
+    down_scaling_method: str = "stride",
 ):
     # * First load tokenizer.
     tokenizer = AutoTokenizer.from_pretrained(
@@ -79,6 +80,7 @@ def load_model_and_tokenizer(
             window=model_args.window,
             encoder_max_length=model_args.encoder_max_length,
             comp_candidates=model_args.comp_candidates,
+            down_scaling_method=down_scaling_method,
         )
         model = LM(
             model_name_or_path=model_args.model_name_or_path,

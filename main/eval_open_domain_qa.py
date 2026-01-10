@@ -1,22 +1,20 @@
 import os
 import uuid
 import logging
-import random
 import datasets
 from dataclasses import dataclass, field, asdict
 from typing import List
+from tqdm import tqdm
+from torch.utils.data import DataLoader
 from transformers import HfArgumentParser, set_seed
-from transformers.tokenization_utils import PreTrainedTokenizer
 from accelerate import Accelerator
 from src.data import FlexRAGCollator, DefaultDataCollator
 from src.open_domain_qa.config import DATASET2PROMPT, DATASET2MAXLEN, DATASET2METRIC
 from src.open_domain_qa.metric import Metric
 from src.model import load_model_and_tokenizer
 from src.args import ModelArgs, LoraArgs
-from torch.utils.data import DataLoader
 from src.utils import save_to_json, FileLogger, move_to_device
 from src.data import Data, INPUT_TAG, CONTEXT_TAG
-from tqdm import tqdm
 
 
 @dataclass
@@ -51,11 +49,8 @@ class TaskArgs:
     seed: int = field(
         default=42,
     )
-    ratio_power_of_two: bool = field( 
+    enable_flexrag: bool = field(
         default=True,
-    ) # whether use ratio which is power of two for dynamic compression
-    use_encoder_at_ratio_one: bool = field(
-        default=False,
     )
 
     def __post_init__(self):
@@ -63,7 +58,7 @@ class TaskArgs:
             raise ValueError("`dataset_names` can not be empty.")
 
 
-def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], tokenizer: PreTrainedTokenizer, retrieval_num: int, seed: int):
+def prepare_open_domain_qa(data_dir: str , dataset_names: List[str], retrieval_num: int):
     def _process(data: dict, dataset_name: str, retrieval_num: int):
         # * get prompt and replace query placehoder
         prompt = DATASET2PROMPT[dataset_name]
@@ -136,20 +131,16 @@ def main():
         dataset_dict = prepare_open_domain_qa(
             data_dir=task_args.data_dir,
             dataset_names=task_args.dataset_names,
-            tokenizer=tokenizer,
             retrieval_num=task_args.retrieval_num,
-            seed=task_args.seed,
         )
-        origin_column_names = dataset_dict[task_args.dataset_names[0]].column_names + ["index", "length"]
         # RAG
-        if task_args.comp_ratio ==0:
+        if not task_args.enable_flexrag:
             dataset_dict = dataset_dict.map(
-                Data.process_instruction_tuning,
+                Data.encode_conversations,
                 fn_kwargs={
                     "tokenizer": tokenizer,
                     "lm_max_length": model_args.lm_max_length,
                     "chat_template": task_args.chat_template,
-                    "eval_mode": True,
                 },
                 with_indices=True,
                 batched=True,
@@ -161,18 +152,14 @@ def main():
             temp_dict = {}
             for dataset_name in dataset_dict.keys():
                 temp_dict[dataset_name] = dataset_dict[dataset_name].map(
-                    Data.process_flexrag_dynamic_instruction_tuning,
+                    Data.encode_conversations_w_uniform_compression,
                     fn_kwargs={
                         "tokenizer": tokenizer,
                         "chat_template": task_args.chat_template,
                         "lm_max_length": model_args.lm_max_length,
                         "encoder_max_length": model_args.encoder_max_length,
-                        "comp_candidates": [task_args.comp_ratio],
+                        "comp_ratio": task_args.comp_ratio,
                         "down_scaling_method": task_args.down_scaling_method,
-                        "eval_mode": True,
-                        "dataset_name": dataset_name,
-                        "ratio_power_of_two": task_args.ratio_power_of_two,
-                        "use_encoder_at_ratio_one": task_args.use_encoder_at_ratio_one, 
                     },
                     with_indices=True,
                     batched=True,
@@ -186,7 +173,7 @@ def main():
     metrics_dict = {}
     for dataset_name in dataset_dict:
         # * prepare dataloader
-        if task_args.comp_ratio ==0:
+        if not task_args.enable_flexrag:
             collator = DefaultDataCollator(tokenizer)
         else:
             collator = FlexRAGCollator(tokenizer)
@@ -216,7 +203,6 @@ def main():
 
             if accelerator.num_processes > 1:
                 outputs = outputs.contiguous()  # must be contiguous
-                # FIXME: dim cannot be -1
                 outputs = accelerator.pad_across_processes(outputs, pad_index=tokenizer.pad_token_id, dim=1)
                 outputs = accelerator.gather_for_metrics(outputs)
             

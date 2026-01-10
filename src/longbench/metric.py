@@ -191,3 +191,14 @@ class Metric:
                 prediction = line
                 break
         return fuzz.ratio(prediction, ground_truth) / 100
+    
+    @staticmethod
+    def em_score(prediction: str, ground_truth: str, **kwargs) -> float:
+        normalized_prediction = normalize_answer(prediction)
+        normalized_ground_truth = normalize_answer(ground_truth)
+
+        if normalized_prediction == normalized_ground_truth:
+            return 1.0
+        else:
+            return 0.0
+

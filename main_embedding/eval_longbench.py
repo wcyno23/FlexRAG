@@ -4,17 +4,16 @@ import uuid
 import logging
 from dataclasses import dataclass, field, asdict
 from typing import List
+from tqdm import tqdm
 from transformers import HfArgumentParser, set_seed
 from accelerate import Accelerator
-from src.data import FlexRAGCollator, DefaultDataCollator
-from src.longbench.config import DATASET2PROMPT, DATASET2TASK, DATASET2MAXLEN, DATASET2METRIC
+from torch.utils.data import DataLoader
+from src.data import FlexRAGCollator
+from src.longbench.config import DATASET2PROMPT, DATASET2MAXLEN, DATASET2METRIC
 from src.longbench.metric import Metric
-from src.chat import apply_chat_template
 from src.model import load_model_and_tokenizer
 from src.args import ModelArgs, LoraArgs
-from torch.utils.data import DataLoader
 from src.utils import save_to_json, move_to_device, FileLogger
-from tqdm import tqdm
 from src.data import Data, INPUT_TAG, CONTEXT_TAG
 
 
@@ -35,8 +34,8 @@ class TaskArgs:
     max_length: int = field(
         default=3500,
     )
-    comp_ratio: int = field(
-        default=16,
+    overall_comp_ratio: int = field(
+        default=8,
     )
     down_scaling_method: str = field(
         default="stride",
@@ -49,12 +48,6 @@ class TaskArgs:
     )
     seed: int = field(
         default=42,
-    )
-    ratio_power_of_two: bool = field( 
-        default=True,
-    ) # whether use ratio which is power of two for dynamic compression
-    use_encoder_at_ratio_one: bool = field(
-        default=False,
     )
     text_proportion: float = field(
         default=0.1,
@@ -138,6 +131,7 @@ def main():
 
     # * load dataset and process
     with accelerator.main_process_first():
+        # * longbench
         dataset_dict = prepare_longbench(
             data_dir=task_args.data_dir,
             dataset_names=task_args.dataset_names,
@@ -152,18 +146,14 @@ def main():
             importance_sentence_dict = importance_sentence_dicts[dataset_name]
 
             temp_dict[dataset_name] = dataset_dict[dataset_name].map(
-                Data.process_flexrag_embedding_sc,
+                Data.encode_conversations_sentence_level_sc,
                 fn_kwargs={
                     "tokenizer": tokenizer,
                     "chat_template": task_args.chat_template,
                     "lm_max_length": model_args.lm_max_length,
                     "encoder_max_length": model_args.encoder_max_length,
-                    "comp_candidates": [task_args.comp_ratio],
+                    "overall_comp_ratio": task_args.overall_comp_ratio,
                     "down_scaling_method": task_args.down_scaling_method,
-                    "eval_mode": True,
-                    "dataset_name": dataset_name, 
-                    "ratio_power_of_two": task_args.ratio_power_of_two,
-                    "use_encoder_at_ratio_one": task_args.use_encoder_at_ratio_one,
                     "text_proportion": task_args.text_proportion,
                     "low_comp_ratio": task_args.low_comp_ratio,
                     "importance_sentence_dict": importance_sentence_dict,
@@ -180,10 +170,7 @@ def main():
     metrics_dict = {}
 
     for dataset_name in task_args.dataset_names:
-        if task_args.comp_ratio == 0:
-            collator = DefaultDataCollator(tokenizer)
-        else:
-            collator = FlexRAGCollator(tokenizer)
+        collator = FlexRAGCollator(tokenizer)
         dataloader = DataLoader(
             dataset_dict[dataset_name],
             batch_size=task_args.batch_size,
@@ -214,7 +201,7 @@ def main():
             
             outputs = outputs.tolist()
             outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-            
+                
             generations.extend(outputs)
         
         if accelerator.process_index == 0:

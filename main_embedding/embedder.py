@@ -26,9 +26,9 @@ class SentenceExtractor:
         return sentences
 
 class SentenceEmbedder:
-    def __init__(self, accelerator=None):
+    def __init__(self, model_name, accelerator=None):
         self.sentence_model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2",
+            model_name,
             device=torch.device(
                 "cuda" if torch.cuda.is_available() else "cpu"
             ),
@@ -155,8 +155,8 @@ def get_sentence_priority_list(
     sentence_embedder,
     prompt,
     number_of_sentences,
-    ):
-    sentence_priority_list = [],
+    dataset_name,
+):
     # * Convert List[List[str]] to List[str]
     sentences = []
     for _sentences_list in sentences_list: 
@@ -164,7 +164,6 @@ def get_sentence_priority_list(
 
     # * Extract query, maybe not fitted at all time
     query = prompt.split('Question: ')[1].split("\nAnswer:")[0]
-    # print(query)
 
     sentences_embeddings = sentence_embedder.calculate_embeddings(sentences)
     query_embeddings = sentence_embedder.calculate_embeddings(query)
@@ -192,7 +191,6 @@ def get_sentence_priority_list(
         if (idx == len(sentences_ids) - 1) or (sentences_ids[idx] + 1 != sentences_ids[idx + 1]):
             sentences_ids_list.append(temp)
             temp = []
-
     
     return priority_list, sentences_ids_list
 
@@ -201,15 +199,3 @@ def get_sentence_priority_list(
 def merge(list1, list2):
     combined_set = set(list1) | set(list2)
     return list(combined_set)
-
-    
-
-    
-
-
-        
-    
-
-        
-
-
