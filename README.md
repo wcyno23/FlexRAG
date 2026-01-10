@@ -36,19 +36,19 @@ Vanilla RAG:
 
 ```
 cd FlexRAG
-bash experiments/eval/eval_longbench_base.sh
+bash experiments/eval/eval_longbench_rag.sh
 ```
 
 FlexRAG w/o Selective Compression:
 
 ```
-bash experiments/eval/eval_longbench_flexrag_wo_sc.sh
+bash experiments/eval/eval_longbench_flexrag_uniform.sh
 ```
 
 FlexRAG w. Selective Compression:
 
 ```
-bash experiments/eval/eval_longbench_flexrag_embedding.sh
+bash experiments/eval/eval_longbench_flexrag_sentence_level_sc.sh
 ```
 
 The final evaluation results will be stored in the `data/longbench` directory.
