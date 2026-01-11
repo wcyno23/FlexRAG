@@ -90,7 +90,7 @@ DDP=""
 fi
 
 # * train
-OUTPUE_NAME=flexrag-llama2-longalpaca-ragft
+OUTPUE_NAME=flexrag-llama2-longalpaca-hotpotqa-nq
 mkdir -p data/outputs/ft/${OUTPUE_NAME}
 
 torchrun --nproc_per_node 8 -m main.ft \
