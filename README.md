@@ -32,30 +32,11 @@ pip install -r requirements.txt
 
 ## :rocket: Usage
 
+### Inference
+
 ### Evaluation
 
-The entire experiment scripts are included at the `experiments` directory. For example, to evaluate on Long-sequence Multi-doc QA dataset:
-
-Vanilla RAG:
-
-```
-cd FlexRAG
-bash experiments/eval/eval_longbench_rag.sh
-```
-
-FlexRAG w/o Selective Compression:
-
-```
-bash experiments/eval/eval_longbench_flexrag_uniform.sh
-```
-
-FlexRAG w. Selective Compression:
-
-```
-bash experiments/eval/eval_longbench_flexrag_sentence_level_sc.sh
-```
-
-The final evaluation results will be stored in the `data/longbench` directory.
+See [evaluation section](./examples/evaluation.md).
 
 ### Training
 
