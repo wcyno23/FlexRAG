@@ -26,8 +26,9 @@ The evaluation dataset for FlexRAG is released [here](https://huggingface.co/dat
 
 You can install the necessary dependencies using the following command. Recommended Python version is 3.10+.
 
-```
+```bash
 pip install -r requirements.txt
+pip install flash-attn --no-build-isolation
 ```
 
 ## :rocket: Usage
