@@ -63,11 +63,10 @@ model = model.cuda()
 model.eval()
 tokenizer.padding_side = "left"
 
-# 2. Build a single LongBench-style prompt
-dataset_name = "hotpotqa"
+# 2. Build a single hotpotqa-style prompt
 question = "Who proposed the theory of general relativity?"
 context = "At the beginning of the 20th century, physics was undergoing rapid change. Many scientists were trying to resolve inconsistencies between classical mechanics and new experimental results. In 1905, Albert Einstein introduced the theory of special relativity, which focused on the relationship between space and time. Over the next several years, Einstein continued his work on extending these ideas to include gravity. After years of development, the theory of general relativity was formally proposed by Albert Einstein, marking a major milestone in modern physics. The theory later became essential for understanding black holes, cosmology, and gravitational waves."
-prompt = DATASET2PROMPT[dataset_name]
+prompt = DATASET2PROMPT["hotpotqa"]
 prompt = prompt.replace(INPUT_TAG, question)
 content = prompt.replace(CONTEXT_TAG, context)
 sample = {
