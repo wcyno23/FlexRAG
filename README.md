@@ -78,15 +78,7 @@ sample = {
 }
 
 # 3. Tokenize (same logic as training/eval)
-encoded = Data.encode_conversations_w_uniform_compression(
-    sample,
-    indices=[0],
-    tokenizer=tokenizer,
-    chat_template="llama-2",
-    encoder_max_length=4096,
-    lm_max_length=4096,
-    comp_ratio=8,
-)
+encoded = Data.encode_conversations_w_uniform_compression(sample, indices=[0], tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, comp_ratio=8)
 encoded = {k: (v[0] if isinstance(v, list) and v is not None else v) for k, v in encoded.items()}
 
 # 4. Use FlexRAGCollator to process inputs
