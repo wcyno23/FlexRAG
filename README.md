@@ -64,8 +64,6 @@ model, tokenizer = load_model_and_tokenizer(model_args, lora_args)
 model = model.cuda()
 model.eval()
 tokenizer.padding_side = "left"
-# set up compression ratio
-comp_ratio = 8
 
 # 2. Build a single LongBench-style prompt
 dataset_name = "hotpotqa"
@@ -89,21 +87,15 @@ encoded = Data.encode_conversations_w_uniform_compression(
     chat_template="llama-2",
     encoder_max_length=4096,
     lm_max_length=4096,
-    comp_ratio=comp_ratio,
+    comp_ratio=8,
 )
-encoded = {
-    k: (v[0] if isinstance(v, list) and v is not None else v)
-    for k, v in encoded.items()
-}
-# Wrap the encoded dict into a list (batch of 1) for collator
-batch_elem = [encoded]
+encoded = {k: (v[0] if isinstance(v, list) and v is not None else v) for k, v in encoded.items()}
 
 # 4. Use FlexRAGCollator to process inputs
 collator = FlexRAGCollator(tokenizer=tokenizer)
-inputs = collator(batch_elem)
+inputs = collator([encoded])
 # Move everything to model device
-inputs = {k: v.to(model.device) if isinstance(v, torch.Tensor) else v
-          for k, v in inputs.items()}
+inputs = {k: v.to(model.device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
 inputs = Data.format_inputs(inputs)
 
 # 5. Generate
