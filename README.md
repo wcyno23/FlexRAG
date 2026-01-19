@@ -35,6 +35,14 @@ pip install flash-attn --no-build-isolation
 
 ## :rocket: Usage
 
+### Evaluation
+
+See [evaluation section](./examples/evaluation.md).
+
+### Training
+
+See [training section](./examples/training.md).
+
 ### Inference
 
 ```python
@@ -46,9 +54,8 @@ from src.model import load_model_and_tokenizer
 from src.longbench.config import DATASET2PROMPT, DATASET2MAXLEN
 from src.data import Data, FlexRAGCollator, INPUT_TAG, CONTEXT_TAG
 from src.args import ModelArgs, LoraArgs
-# ------------------------------------------------
+
 # 1. Load model & tokenizer
-# ------------------------------------------------
 model_args = ModelArgs(
     model_name_or_path="/share/project/chenyuan/models/Llama2-7b-chat", 
     encoder_name_or_path="/share/project/chenyuan/models/FlexRAG")
@@ -60,9 +67,7 @@ tokenizer.padding_side = "left"
 # set up compression ratio
 comp_ratio = 8
 
-# ------------------------------------------------
 # 2. Build a single LongBench-style prompt
-# ------------------------------------------------
 dataset_name = "hotpotqa"
 question = "Who proposed the theory of general relativity?"
 context = "At the beginning of the 20th century, physics was undergoing rapid change. Many scientists were trying to resolve inconsistencies between classical mechanics and new experimental results. In 1905, Albert Einstein introduced the theory of special relativity, which focused on the relationship between space and time. Over the next several years, Einstein continued his work on extending these ideas to include gravity. After years of development, the theory of general relativity was formally proposed by Albert Einstein, marking a major milestone in modern physics. The theory later became essential for understanding black holes, cosmology, and gravitational waves."
@@ -76,9 +81,7 @@ sample = {
     ]]
 }
 
-# ------------------------------------------------
 # 3. Tokenize (same logic as training/eval)
-# ------------------------------------------------
 encoded = Data.encode_conversations_w_uniform_compression(
     sample,
     indices=[0],
@@ -95,9 +98,7 @@ encoded = {
 # Wrap the encoded dict into a list (batch of 1) for collator
 batch_elem = [encoded]
 
-# ------------------------------------------------
 # 4. Use FlexRAGCollator to process inputs
-# ------------------------------------------------
 collator = FlexRAGCollator(tokenizer=tokenizer)
 inputs = collator(batch_elem)
 # Move everything to model device
@@ -105,9 +106,7 @@ inputs = {k: v.to(model.device) if isinstance(v, torch.Tensor) else v
           for k, v in inputs.items()}
 inputs = Data.format_inputs(inputs)
 
-# ------------------------------------------------
-# 4. Generate
-# ------------------------------------------------
+# 5. Generate
 with torch.no_grad():
     output_ids = model.generate(
         **inputs,
@@ -121,14 +120,6 @@ output_text = tokenizer.decode(
 print('Question: ', question)
 print('Answer: ', output_text)
 ```
-
-### Evaluation
-
-See [evaluation section](./examples/evaluation.md).
-
-### Training
-
-See [training section](./examples/training.md).
 
 ## ✍️ Citation
 If you find this repository useful, please consider giving a star ⭐ and citation
