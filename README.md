@@ -56,9 +56,7 @@ from src.data import Data, FlexRAGCollator, INPUT_TAG, CONTEXT_TAG
 from src.args import ModelArgs, LoraArgs
 
 # 1. Load model & tokenizer
-model_args = ModelArgs(
-    model_name_or_path="meta-llama/Llama-2-7b-chat-hf", 
-    encoder_name_or_path="wcyno23/FlexRAG")
+model_args = ModelArgs(model_name_or_path="meta-llama/Llama-2-7b-chat-hf", encoder_name_or_path="wcyno23/FlexRAG")
 lora_args = LoraArgs()
 model, tokenizer = load_model_and_tokenizer(model_args, lora_args)
 model = model.cuda()
