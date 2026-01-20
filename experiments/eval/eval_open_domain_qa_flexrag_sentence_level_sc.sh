@@ -4,7 +4,7 @@ cd ../
 
 torchrun --nproc_per_node 8 -m main_embedding.prepare_open_domain_qa \
 --model_name_or_path meta-llama/Llama-2-7b-chat-hf \
---embedding_model_name_or_path /share/project/chenyuan/models/all-MiniLM-L6-v2 \
+--embedding_model_name_or_path sentence-transformers/all-MiniLM-L6-v2 \
 --lm_max_length 4096 \
 --encoder_name_or_path wcyno23/FlexRAG \
 --encoder_num_hidden_layers 8 \
