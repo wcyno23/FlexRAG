@@ -313,7 +313,6 @@ class Data:
             "attention_mask": [],
             "length": [],
             "index": [],
-            "labels": [],
         }
 
         for i, conversations in enumerate(data["conversations"]):
