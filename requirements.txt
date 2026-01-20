@@ -2,7 +2,7 @@ torch==2.7.1
 transformers==4.36.0
 deepspeed>=0.14.0
 numpy==1.26.4
-sentence-transformers==2.2.2
+sentence-transformers==2.3.0
 peft
 datasets
 accelerate
