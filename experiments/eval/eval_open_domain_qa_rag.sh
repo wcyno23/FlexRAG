@@ -13,7 +13,5 @@ torchrun --nproc_per_node 8 -m main.eval_open_domain_qa \
 --chat_template llama-2 \
 --dataset_names nq popqa trivia \
 --retrieval_num 5 \
---comp_ratio 0 \
---down_scaling_method stride \
 --batch_size 4 \
 --enable_flexrag False
