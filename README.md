@@ -45,6 +45,8 @@ See [training section](./examples/training.md).
 
 ### Inference
 
+Here is an example of FlexRAG without selective compression. 
+
 ```python
 import torch
 import sys
@@ -102,7 +104,10 @@ print('Question: ', question)
 print('Answer: ', output_text)
 ```
 
+The overall performance can be further improved by leveraging an importance estimator to analyze critical information within the context and subsequently allocate compression ratios. For additional usage details, please refer [evaluation section](./examples/evaluation.md).
+
 ## ✍️ Citation
+
 If you find this repository useful, please consider giving a star ⭐ and citation
 ```
 @inproceedings{wu2025lighter,
