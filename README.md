@@ -9,22 +9,27 @@
 <a><img alt="Static Badge" src="https://img.shields.io/badge/made_with-Python-blue"></a>
 </div>
 <h4 align="center">
-
 ## 👋 Overview
 
 **FlexRAG** is a lightweight model designed to reduce RAG running costs while improving its generation quality. It compresses the retrieved contexts into compact embeddings and these embeddings are optimized to enhance downstream RAG performance. A key feature of FlexRAG is its flexibility, which enables effective support for diverse compression ratios and selective preservation of important contexts. 
 
 ![](imgs/frame.png)
 
+## 🔥 News
+
+- 2026-01-21: Training Resources Now Available
+
+  The [training code](./examples/training.md) and [dataset](https://huggingface.co/datasets/wcyno23/TacZip-Data) are now officially released!
+
 ## ✨ Performance
 
-| Model   | Compression Ratio | Exact Match | CUDA Time (s) | TFLOPs |
-| ------- | ----------------- | ----------- | ------------- | ------ |
-| RAG     | 1×                | 37.25       | 7.78          | 14.17  |
-| FlexRAG | 2×                | 47.23       | 4.97          | 10.48  |
-| FlexRAG | 4×                | 47.25       | 3.13          | 7.03   |
-| FlexRAG | 8×                | 45.37       | 2.48          | 5.39   |
-| FlexRAG | 16×               | 38.93       | 2.20          | 4.59   |
+| Model   | Compression Ratio | Exact Match | CUDA Time (s) | TFLOPs   |
+| ------- | ----------------- | ----------- | ------------- | -------- |
+| RAG     | 1×                | 37.25       | 7.78          | 14.17    |
+| FlexRAG | 2×                | **47.23**   | 4.97          | 10.48    |
+| FlexRAG | 4×                | 47.25       | 3.13          | 7.03     |
+| FlexRAG | 8×                | 45.37       | 2.48          | 5.39     |
+| FlexRAG | 16×               | 38.93       | **2.20**      | **4.59** |
 
 ## 🛠️ Set up
 
