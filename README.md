@@ -16,6 +16,16 @@
 
 ![](imgs/frame.png)
 
+## ✨ Performance
+
+| Model   | Compression Ratio | Exact Match | CUDA Time (s) | TFLOPs |
+| ------- | ----------------- | ----------- | ------------- | ------ |
+| RAG     | 1×                | 37.25       | 7.78          | 14.17  |
+| FlexRAG | 2×                | 47.23       | 4.97          | 10.48  |
+| FlexRAG | 4×                | 47.25       | 3.13          | 7.03   |
+| FlexRAG | 8×                | 45.37       | 2.48          | 5.39   |
+| FlexRAG | 16×               | 38.93       | 2.20          | 4.59   |
+
 ## 🛠️ Set up
 
 ### Data
