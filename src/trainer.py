@@ -18,9 +18,3 @@ class CompressiveEncoderTrainer(Trainer):
         self.model.save(output_dir)
 
         torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
-
-    def _get_train_sampler(self, train_dataset) -> Optional[torch.utils.data.Sampler]:
-        if train_dataset is None or not has_length(train_dataset):
-            return None
-        
-        return super()._get_train_sampler()
