@@ -11,6 +11,13 @@ The training process consists of two stages:
 
 Please download the training data from [TacZip-Data]( https://huggingface.co/datasets/wcyno23/TacZip-Data/tree/main/train/compressive_encoder) and place it under the `data/train` directory.
 
+## Environment Setup
+
+```bash
+conda activate flexrag
+pip install transformers==4.57.3 accelerate==1.9.0 # Recommended version for stable gradient checkpointing
+```
+
 ## Pretrain
 
 ```bash
@@ -61,11 +68,16 @@ fi
 OUTPUE_NAME=flexrag-llama2-longalpaca
 mkdir -p data/outputs/ft/${OUTPUE_NAME}
 
+BASE="data/outputs/pretrain/flexrag-llama2-pretrain"
+LATEST_CKPT_DIR=$(ls -d ${BASE}/checkpoint-* | sort -V | tail -n 1)
+ENCODER_PATH="${LATEST_CKPT_DIR}/compressive_encoder"
+echo "Using encoder path: $ENCODER_PATH"
+
 torchrun --nproc_per_node 8 -m main.ft \
 --model_name_or_path meta-llama/Llama-2-7b-chat-hf \
 --window_mode false \
 --lm_max_length 4096 \
---encoder_name_or_path data/outputs/pretrain/flexrag-llama2-pretrain/* \
+--encoder_name_or_path "$ENCODER_PATH" \
 --encoder_num_hidden_layers 8 \
 --encoder_max_length 4096 \
 --comp_candidates 1 2 4 8 \
@@ -93,11 +105,16 @@ fi
 OUTPUE_NAME=flexrag-llama2-longalpaca-hotpotqa-nq
 mkdir -p data/outputs/ft/${OUTPUE_NAME}
 
+BASE="data/outputs/ft/flexrag-llama2-longalpaca"
+LATEST_CKPT_DIR=$(ls -d ${BASE}/checkpoint-* | sort -V | tail -n 1)
+ENCODER_PATH="${LATEST_CKPT_DIR}/compressive_encoder"
+echo "Using encoder path: $ENCODER_PATH"
+
 torchrun --nproc_per_node 8 -m main.ft \
 --model_name_or_path meta-llama/Llama-2-7b-chat-hf \
 --window_mode false \
 --lm_max_length 4096 \
---encoder_name_or_path data/outputs/ft/flexrag-llama2-longalpaca/* \
+--encoder_name_or_path "$ENCODER_PATH" \
 --encoder_num_hidden_layers 8 \
 --encoder_max_length 4096 \
 --comp_candidates 1 2 4 8 \
