@@ -172,11 +172,11 @@ overall_comp_ratio = 8
 text_proportion = 1 / 16
 low_comp_ratio = 1
 
-# 3. perform sentence level importance estimation
+# 3. Perform sentence level importance estimation
 sentence_begin_indices, sentence_priority_list, sentences_ids_list = encode_conversations_w_uniform_compression(sample, tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, comp_ratio=overall_comp_ratio, dataset_name="hotpotqa", sentence_embedder=sentence_embedder)
 importance_sentence_dict = [{'sentence_begin_indices': sentence_begin_indices, "sentence_priority_list": sentence_priority_list, "sentences_ids_list": sentences_ids_list}]
 
-# 4. Tokenize (same logic as training/eval)
+# 4. Tokenize
 encoded = Data.encode_conversations_sentence_level_sc(sample, indices=[0], tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, overall_comp_ratio=overall_comp_ratio, text_proportion=text_proportion, low_comp_ratio=low_comp_ratio, importance_sentence_dict=importance_sentence_dict)
 encoded = {k: (v[0] if isinstance(v, list) and v is not None else v) for k, v in encoded.items()}
 
