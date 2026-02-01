@@ -61,6 +61,8 @@ See [training section](./examples/training.md).
 
 ### Inference
 
+#### Uniform compression
+
 Here is an example of FlexRAG without selective compression. 
 
 ```python
@@ -69,7 +71,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.model import load_model_and_tokenizer
-from src.longbench.config import DATASET2PROMPT, DATASET2MAXLEN
+from src.longbench.config import DATASET2PROMPT
 from src.data import Data, FlexRAGCollator, INPUT_TAG, CONTEXT_TAG
 from src.args import ModelArgs, LoraArgs
 
@@ -81,7 +83,7 @@ model = model.cuda()
 model.eval()
 tokenizer.padding_side = "left"
 
-# 2. Build a single hotpotqa-style prompt
+# 2. Build a single hotpotqa-style prompt and configure compression-related parameters
 question = "Who proposed the theory of general relativity?"
 context = "At the beginning of the 20th century, physics was undergoing rapid change. Many scientists were trying to resolve inconsistencies between classical mechanics and new experimental results. In 1905, Albert Einstein introduced the theory of special relativity, which focused on the relationship between space and time. Over the next several years, Einstein continued his work on extending these ideas to include gravity. After years of development, the theory of general relativity was formally proposed by Albert Einstein, marking a major milestone in modern physics. The theory later became essential for understanding black holes, cosmology, and gravitational waves."
 prompt = DATASET2PROMPT["hotpotqa"]
@@ -93,9 +95,10 @@ sample = {
         {"role": "assistant", "content": None},
     ]]
 }
+overall_comp_ratio = 8
 
-# 3. Tokenize (same logic as training/eval)
-encoded = Data.encode_conversations_w_uniform_compression(sample, indices=[0], tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, comp_ratio=8)
+# 3. Tokenize
+encoded = Data.encode_conversations_w_uniform_compression(sample, indices=[0], tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, comp_ratio=overall_comp_ratio)
 encoded = {k: (v[0] if isinstance(v, list) and v is not None else v) for k, v in encoded.items()}
 
 # 4. Use FlexRAGCollator to process inputs
@@ -109,7 +112,7 @@ inputs = Data.format_inputs(inputs)
 with torch.no_grad():
     output_ids = model.generate(
         **inputs,
-        max_new_tokens=DATASET2MAXLEN[dataset_name],
+        max_new_tokens=32,
         do_sample=False,
     )
 output_text = tokenizer.decode(
@@ -120,7 +123,86 @@ print('Question: ', question)
 print('Answer: ', output_text)
 ```
 
-The overall performance can be further improved by leveraging an importance estimator to analyze critical information within the context and subsequently allocate compression ratios. For additional usage details, please refer [evaluation section](./examples/evaluation.md).
+#### Selective compression
+
+The overall performance can be further improved by leveraging an importance estimator to analyze critical information within the context and subsequently allocate compression ratios. **Note:** this estimation introduces additional computational overhead.
+
+Below is an example that uses the [all-MiniLM-L6-v2](sentence-transformers/all-MiniLM-L6-v2) embedding model to perform sentence-level importance estimation. The overall context is divided into two priority levels: `high-priority context` is assigned `lower compression ratios`, while low-priority context is assigned higher compression ratios. 
+
+* `context_proportion` (`float`): The proportion of high-priority context.
+* `low_comp_ratio` (`int`): Compression ratios assigned to high-priority context.
+
+**Note**: Ensure that the values of `context_proportion` and `low_comp_ratio` are valid, so that the compression ratios for the remaining context can be computed correctly and the overall compression ratio is achievable.
+
+```python
+import torch
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.model import load_model_and_tokenizer
+from src.longbench.config import DATASET2PROMPT
+from src.data import Data, FlexRAGCollator, INPUT_TAG, CONTEXT_TAG
+from src.args import ModelArgs, LoraArgs
+from main_embedding.embedder import SentenceEmbedder
+from main_embedding.prepare_longbench import encode_conversations_w_uniform_compression
+
+# 1. Load model & tokenizer & embedding model 
+model_args = ModelArgs(model_name_or_path="meta-llama/Llama-2-7b-chat-hf", encoder_name_or_path="wcyno23/FlexRAG")
+lora_args = LoraArgs()
+model, tokenizer = load_model_and_tokenizer(model_args, lora_args)
+model = model.cuda()
+model.eval()
+tokenizer.padding_side = "left"
+sentence_embedder = SentenceEmbedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
+sentence_embedder.sentence_model.to(model.device).eval()
+
+# 2. Build a single hotpotqa-style prompt and configure compression-related parameters
+question = "Who proposed the theory of general relativity?"
+context = "At the beginning of the 20th century, physics was undergoing rapid change. Many scientists were trying to resolve inconsistencies between classical mechanics and new experimental results. In 1905, Albert Einstein introduced the theory of special relativity, which focused on the relationship between space and time. Over the next several years, Einstein continued his work on extending these ideas to include gravity. After years of development, the theory of general relativity was formally proposed by Albert Einstein, marking a major milestone in modern physics. The theory later became essential for understanding black holes, cosmology, and gravitational waves."
+prompt = DATASET2PROMPT["hotpotqa"]
+prompt = prompt.replace(INPUT_TAG, question)
+content = prompt.replace(CONTEXT_TAG, context)
+sample = {
+    "conversations": [[
+        {"role": "user", "content": content, "prompt": prompt, "context": context},
+        {"role": "assistant", "content": None},
+    ]]
+}
+overall_comp_ratio = 8
+text_proportion = 1 / 16
+low_comp_ratio = 1
+
+# 3. perform sentence level importance estimation
+sentence_begin_indices, sentence_priority_list, sentences_ids_list = encode_conversations_w_uniform_compression(sample, tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, comp_ratio=overall_comp_ratio, dataset_name="hotpotqa", sentence_embedder=sentence_embedder)
+importance_sentence_dict = [{'sentence_begin_indices': sentence_begin_indices, "sentence_priority_list": sentence_priority_list, "sentences_ids_list": sentences_ids_list}]
+
+# 4. Tokenize (same logic as training/eval)
+encoded = Data.encode_conversations_sentence_level_sc(sample, indices=[0], tokenizer=tokenizer, chat_template="llama-2", encoder_max_length=4096, lm_max_length=4096, overall_comp_ratio=overall_comp_ratio, text_proportion=text_proportion, low_comp_ratio=low_comp_ratio, importance_sentence_dict=importance_sentence_dict)
+encoded = {k: (v[0] if isinstance(v, list) and v is not None else v) for k, v in encoded.items()}
+
+# 5. Use FlexRAGCollator to process inputs
+collator = FlexRAGCollator(tokenizer=tokenizer)
+inputs = collator([encoded])
+# Move everything to model device
+inputs = {k: v.to(model.device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+inputs = Data.format_inputs(inputs)
+
+# 5. Generate
+with torch.no_grad():
+    output_ids = model.generate(
+        **inputs,
+        max_new_tokens=32,
+        do_sample=False,
+    )
+output_text = tokenizer.decode(
+    output_ids[0, inputs["input_ids"].shape[1]:],
+    skip_special_tokens=True,
+)
+print('Question: ', question)
+print('Answer: ', output_text)
+```
+
+For additional usage details, please refer [evaluation section](./examples/evaluation.md).
 
 ## ✍️ Citation
 
