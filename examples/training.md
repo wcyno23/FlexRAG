@@ -3,7 +3,7 @@
 The training process consists of two stages:
 - Pretrain
   - 90K samples from [redpajama](https://huggingface.co/datasets/togethercomputer/RedPajama-Data-1T-Sample) with auto-regressive language modeling
-  - 20K context length at maximum
+  - 16K context length at maximum
   
 - Finetune
   - 10K samples from [LongAlpaca](https://huggingface.co/datasets/Yukang/LongAlpaca-12k)
