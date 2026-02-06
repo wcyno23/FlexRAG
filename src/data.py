@@ -699,10 +699,11 @@ class Data:
                 # longbench    
                 len_for_encoder = lm_max_length - len(head_input_ids) - len(tail_input_ids) - len(normal_token_input_ids_pair[0]) - len(normal_token_input_ids_pair[1])
                 remain_length = len_for_encoder - low_ratio_index_length - len(selected_sentences_id) * 2 - len(encoder_input_ids)
-            if remain_length < 0:
-                raise ValueError("The remain must be greater than 0. Consider lowering the text_proportion.")
-
-            high_comp_ratio = math.ceil((len_encoder_input_ids - sentences_length) / remain_length)
+            
+            if remain_length <= 0:
+                high_comp_ratio = 0
+            else:
+                high_comp_ratio = math.ceil((len_encoder_input_ids - sentences_length) / remain_length)
 
             # * encoder_indices
             if low_ratio_index_length > 0:
