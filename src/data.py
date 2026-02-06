@@ -135,7 +135,6 @@ class Data:
                     if low_comp_ratio == 1:
                         __encoder_indices = __encoder_indices[1:]
                     _encoder_indices.extend(__encoder_indices)
-
                     low_ratio_length += len(__encoder_indices)
                 else:
                     sentence_length = sentence_begin_indices[sentence_id + 1]['idx2'] - sentence_begin_indices[sentence_id]['idx2']
@@ -144,9 +143,9 @@ class Data:
                         __encoder_indices.append(sentence_begin_indices[sentence_id + 1]['idx2'] - 1)
                     if high_comp_ratio == 1:
                         __encoder_indices = __encoder_indices[1:]
-                    _encoder_indices.extend(__encoder_indices)
-
-                    high_ratio_length += len(__encoder_indices)
+                    if high_comp_ratio < 100:
+                        _encoder_indices.extend(__encoder_indices)
+                        high_ratio_length += len(__encoder_indices)
             encoder_indices.append(_encoder_indices)
 
         return encoder_indices
@@ -570,7 +569,7 @@ class Data:
             lm_length = sum([len(x) for x in encoder_indices])
             
             # * check
-            if (len_for_encoder + 2 < lm_length)  and (low_ratio_index_length > 0):
+            if (len_for_encoder + 2 + len(encoder_input_ids) < lm_length)  and (low_ratio_index_length > 0):
                 raise ValueError("Invalid encoder_indices")
                 
             # * input_ids
@@ -701,7 +700,7 @@ class Data:
                 len_for_encoder = lm_max_length - len(head_input_ids) - len(tail_input_ids) - len(normal_token_input_ids_pair[0]) - len(normal_token_input_ids_pair[1])
                 remain_length = len_for_encoder - low_ratio_index_length - len(selected_sentences_id) * 2 - len(encoder_input_ids)
             if remain_length < 0:
-                raise ValueError("The remain must be greater than 0. Consider lowering the selection_propotion.")
+                raise ValueError("The remain must be greater than 0. Consider lowering the text_proportion.")
 
             high_comp_ratio = math.ceil((len_encoder_input_ids - sentences_length) / remain_length)
 
@@ -723,7 +722,7 @@ class Data:
             lm_length = sum([len(x) for x in encoder_indices])
             
             # * check
-            if len_for_encoder < lm_length and low_ratio_index_length > 0:
+            if len_for_encoder + len(encoder_input_ids) < lm_length and low_ratio_index_length > 0:
                 raise ValueError("Invalid encoder_indices")
 
             # * input_ids
